@@ -11,6 +11,8 @@ public class CardBoardManager : MonoBehaviour
     private CaroState[] caroState;
     private CaroController[] caroBoard;
     private Coord[] directions = { Coord.Down, Coord.Right, Coord.DiagLeft, Coord.DiagRight };
+    private CaroState playerSide = CaroState.FilledX;
+    private CaroState botSide = CaroState.FilledO;
 
     private void Awake()
     {
@@ -46,13 +48,19 @@ public class CardBoardManager : MonoBehaviour
         if(CheckWin())
         {
             CaroEvent.InvokeGameWin();
+            foreach (CaroController controller in caroBoard) controller.ForceUnallowInteract();
             return;
         }
         if(CheckDraw())
         {
             CaroEvent.InvokeGameDraw();
+            foreach (CaroController controller in caroBoard) controller.ForceUnallowInteract();
             return;
         }
+
+        int opponentMoveIndex = CaroAI.RandomMove(caroState);
+        caroState[opponentMoveIndex] = CaroState.FilledO;
+        caroBoard[opponentMoveIndex].SetCaroValue(CaroState.FilledO);
     }
     private bool CheckWin()
     {
@@ -100,6 +108,10 @@ public class CardBoardManager : MonoBehaviour
         }
         return true;
     }
+    //private bool CheckBotWin()
+    //{
+
+    //}
     private bool IsInsideBoard(Coord coord)
     {
         if (coord.row >= boardSize || coord.row < 0 || coord.col >= boardSize || coord.col < 0) return false;
@@ -110,4 +122,5 @@ public class CardBoardManager : MonoBehaviour
     {
         return coord.row * boardSize + coord.col;
     }
+    
 }
