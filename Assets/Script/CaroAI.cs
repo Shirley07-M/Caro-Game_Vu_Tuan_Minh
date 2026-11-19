@@ -11,6 +11,8 @@ public static class CaroAI //* Cắt đứt liên hệ với unity để chạy 
             if (boardState[i] is CaroState.Empty) emptyCaroIndex.Add(i);
         }
 
+        if (emptyCaroIndex.Count == 0) return -1;
+
         int randomIndex = random.Next(0, emptyCaroIndex.Count);
 
         return emptyCaroIndex[randomIndex];

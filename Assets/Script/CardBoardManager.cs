@@ -31,87 +31,110 @@ public class CardBoardManager : MonoBehaviour
         {
             CaroController currentCaro = Instantiate(caroPrefab, caroBoardUI);
             currentCaro.SetCaroIndex(i);
-            currentCaro.caro.onClick.AddListener(() => OnCaroClicked(currentCaro.caroindex));
+            currentCaro.caro.onClick.AddListener(() => HandleCaroClicked(currentCaro.caroindex));
 
             caroState[i] = CaroState.Empty;
             caroBoard[i] = currentCaro;
         }
     }
 
-    private void OnCaroClicked(int caroIndex)
+    private void HandleCaroClicked(int caroIndex)
     {
         if (caroState[caroIndex] != CaroState.Empty) return;
 
-        caroState[caroIndex] = CaroState.FilledX;
-        caroBoard[caroIndex].SetCaroValue(CaroState.FilledX);
+        // Lượt của người chơi
+        caroState[caroIndex] = playerSide;
+        caroBoard[caroIndex].SetCaroValue(playerSide);
 
-        if(CheckWin())
+        Coord playerCoord = Convert1DTo2D(caroIndex);
+        if (CheckWin(playerCoord, playerSide))
         {
             CaroEvent.InvokeGameWin();
-            foreach (CaroController controller in caroBoard) controller.ForceUnallowInteract();
+            DisableBoardInteraction();
             return;
         }
-        if(CheckDraw())
+
+        if (CheckDraw())
         {
             CaroEvent.InvokeGameDraw();
-            foreach (CaroController controller in caroBoard) controller.ForceUnallowInteract();
+            DisableBoardInteraction();
             return;
         }
 
+        // Lượt của Bot
         int opponentMoveIndex = CaroAI.RandomMove(caroState);
-        caroState[opponentMoveIndex] = CaroState.FilledO;
-        caroBoard[opponentMoveIndex].SetCaroValue(CaroState.FilledO);
-    }
-    private bool CheckWin()
-    {
-        for (int r = 0; r < boardSize; r++)
+        if (opponentMoveIndex == -1) return;
+
+        caroState[opponentMoveIndex] = botSide;
+        caroBoard[opponentMoveIndex].SetCaroValue(botSide);
+
+        Coord botCoord = Convert1DTo2D(opponentMoveIndex);
+        if (CheckWin(botCoord, botSide))
         {
-            for (int c = 0; c < boardSize; c++)
-            {
-                Coord currentCoord = new Coord(r, c);
-                int current1D = Convert2DTo1D(currentCoord);
+            CaroEvent.InvokeGameLost();
+            DisableBoardInteraction();
+            return;
+        }
 
-                if (caroState[current1D] is CaroState.Empty) continue;
+        if (CheckDraw())
+        {
+            CaroEvent.InvokeGameDraw();
+            DisableBoardInteraction();
+            return;
+        }
+    }
 
-                foreach(var dir in directions)
-                {
-                    if (CheckStreak(currentCoord, dir, current1D)) return true;
-                }
-            }
+    private bool CheckWin(Coord clickedCoord, CaroState targetSide)
+    {
+        foreach (Coord dir in directions)
+        {
+            Coord oppositeDir = (-1) * dir;
+
+            int forwardStreakCount = CountStreak(clickedCoord, dir, targetSide);
+            int backwardStreakCount = CountStreak(clickedCoord, oppositeDir, targetSide);
+
+            int totalStreakCount = 1 + forwardStreakCount + backwardStreakCount;
+
+            if (totalStreakCount >= winLength) return true;
         }
         return false;
     }
 
-    private bool CheckStreak(Coord currentCoord, Coord dir, int current1D)
+    private int CountStreak(Coord startCoord, Coord dir, CaroState targetSide)
     {
-        Coord lastCoord = currentCoord + (winLength - 1) * dir;
-        if (!IsInsideBoard(lastCoord)) return false;
-
-        int lastCoordIndex = Convert2DTo1D(lastCoord);
-        if (caroState[current1D] != caroState[lastCoordIndex]) return false;
+        int streakCount = 0;
 
         for (int step = 1; step < winLength; step++)
         {
-            Coord nextCoord = currentCoord + step * dir;
-            int nextIndex = Convert2DTo1D(nextCoord);   
+            Coord nextCoord = startCoord + step * dir;
+            if (!IsInsideBoard(nextCoord)) break;
 
-            if (caroState[nextIndex] != caroState[current1D]) return false;
+            int nextIndex = Convert2DTo1D(nextCoord);
+            if (caroState[nextIndex] != targetSide) break;
+
+            streakCount++;
         }
-        return true;
+
+        return streakCount;
     }
 
     private bool CheckDraw()
     {
-        foreach(var state in caroState)
+        foreach (var state in caroState)
         {
-            if(state is CaroState.Empty) return false;
+            if (state is CaroState.Empty) return false;
         }
         return true;
     }
-    //private bool CheckBotWin()
-    //{
 
-    //}
+    private void DisableBoardInteraction()
+    {
+        foreach (CaroController controller in caroBoard)
+        {
+            controller.ForceUnallowInteract();
+        }
+    }
+
     private bool IsInsideBoard(Coord coord)
     {
         if (coord.row >= boardSize || coord.row < 0 || coord.col >= boardSize || coord.col < 0) return false;
@@ -122,5 +145,9 @@ public class CardBoardManager : MonoBehaviour
     {
         return coord.row * boardSize + coord.col;
     }
-    
+
+    private Coord Convert1DTo2D(int caroIndex)
+    {
+        return new Coord(caroIndex / boardSize, caroIndex % boardSize);
+    }
 }
