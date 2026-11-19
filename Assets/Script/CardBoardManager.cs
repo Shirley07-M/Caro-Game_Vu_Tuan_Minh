@@ -62,7 +62,7 @@ public class CardBoardManager : MonoBehaviour
         }
 
         // Lượt của Bot
-        int opponentMoveIndex = CaroAI.RandomMove(caroState);
+        int opponentMoveIndex = CaroAI.OptimalMove(caroState,0, false, boardSize,winLength, directions);
         if (opponentMoveIndex == -1) return;
 
         caroState[opponentMoveIndex] = botSide;
